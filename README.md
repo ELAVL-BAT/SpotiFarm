@@ -12,7 +12,7 @@
 
 ---
 
-## The Pitch (The Yap)
+## The Pitch 
 
 Let's be completely honest for a second. December rolls around, Spotify Wrapped drops, and your group chat turns into a bloodbath of who listened to more obscure midwest emo, who managed to clock 200,000 minutes on a niche Japanese shoegaze band, or who can unironically claim they are in the top 0.001% of listeners for an underground soundcloud rapper.
 
@@ -96,6 +96,11 @@ SpotiFarm actively monitors Spotify Connect state directly from the DOM:
 * **Non-Destructive Playback:** If you manually change a track or album, SpotiFarm recognizes user intent and will not force-reset your queue back to the default farm playlist.
 
 ### 2. Glassmorphic Web Dashboard (`:3000`)
+
+<div align="center">
+  <img src="assets/dashboard.png" alt="SpotiFarm WebUI Dashboard" width="100%" />
+</div>
+
 A real-time management dashboard featuring:
 * **Account Info:** Displays your active Spotify display name and profile picture pulled directly from Spotify CDN.
 * **Live Now Playing Card:** High-resolution album artwork, track title, artist name, active playlist badge, real-time progress bar, and animated equalizer visualizer.
