@@ -98,7 +98,7 @@ SpotiFarm actively monitors Spotify Connect state directly from the DOM:
 ### 2. Web Dashboard (`:3000`)
 
 <div align="center">
-  <img src="assets/dashboard.png" alt="SpotiFarm WebUI Dashboard" width="100%" />
+  <img src="assets/dashboard-screenshot.png" alt="SpotiFarm WebUI Dashboard" width="100%" />
 </div>
 
 A real-time management dashboard featuring:
