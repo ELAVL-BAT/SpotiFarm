@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { chromium } = require('playwright');
 const { loadConfig } = require('./config');
 const { Player } = require('./player');
@@ -7,11 +9,32 @@ const { startServer } = require('./server');
 const PROFILE_DIR = process.env.PROFILE_DIR || '/data/chrome-profile';
 const WEBUI_PORT = parseInt(process.env.WEBUI_PORT || '3000', 10);
 
+function cleanStaleLocks(profileDir) {
+  try {
+    const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'parent.lock', 'lockfile'];
+    for (const file of lockFiles) {
+      const p = path.join(profileDir, file);
+      try {
+        fs.unlinkSync(p);
+        console.log(`[main] removed stale lock: ${file}`);
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          console.warn(`[main] could not remove lock ${file}:`, err.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[main] cleanStaleLocks error:', err.message);
+  }
+}
+
 // *the main loop breathes life into the headless shell*
 async function main() {
   const config = loadConfig();
   console.log('[main] SpotiFarms starting...');
   console.log('[main] playlists:', config.playlists);
+
+  cleanStaleLocks(PROFILE_DIR);
 
   const context = await chromium.launchPersistentContext(PROFILE_DIR, {
     headless: false, // needs Xvfb — Spotify detects headless and throttles
@@ -73,7 +96,7 @@ async function main() {
     timezoneId: 'America/New_York',
   });
 
-  // patch navigator.webdriver away
+  // patch navigator.webdriver away and auto-dismiss cookie/popup overlays
   await context.addInitScript(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
     Object.defineProperty(navigator, 'plugins', {
@@ -82,6 +105,25 @@ async function main() {
     Object.defineProperty(navigator, 'languages', {
       get: () => ['en-US', 'en'],
     });
+
+    // Auto-remove OneTrust and blocking modal overlays
+    const cleanOverlays = () => {
+      try {
+        const ot = document.getElementById('onetrust-consent-sdk');
+        if (ot) ot.remove();
+        const otBtn = document.getElementById('onetrust-accept-btn-handler');
+        if (otBtn) otBtn.click();
+
+        const cookieBanner = document.querySelector('div[data-testid="cookie-notice-banner"]');
+        if (cookieBanner) cookieBanner.remove();
+
+        const backdrops = document.querySelectorAll('div[data-testid="body-overlay"], .GenericModal__overlay');
+        backdrops.forEach((b) => b.remove());
+      } catch {}
+    };
+
+    setInterval(cleanOverlays, 1000);
+    window.addEventListener('DOMContentLoaded', cleanOverlays);
   });
 
   const page = await context.newPage();

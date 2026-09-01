@@ -6,6 +6,7 @@
  * - Play any custom Spotify URL (Track, Album, Playlist, Artist)
  * - Click and play any track from the visible tracklist
  * - Connect Device awareness & non-destructive takeover
+ * - Bulletproof direct DOM dispatch (immune to OneTrust and modal overlays)
  */
 
 class Player {
@@ -21,7 +22,7 @@ class Player {
     this.rotateTimer = null;
     this.cachedAccount = null;
     this.lastAccountCheck = 0;
-    this.userControlled = false; // When user explicitly changes song/playlist
+    this.userControlled = false;
   }
 
   // *the needle drops — first contact with audio*
@@ -40,10 +41,31 @@ class Player {
     this.scheduleRandomSkips();
   }
 
+  async dismissOverlays() {
+    try {
+      await this.page.evaluate(() => {
+        // 1. OneTrust popup removal
+        const otAccept = document.getElementById('onetrust-accept-btn-handler');
+        if (otAccept) otAccept.click();
+        const ot = document.getElementById('onetrust-consent-sdk');
+        if (ot) ot.remove();
+
+        // 2. Generic Spotify modals & close buttons
+        const closeBtns = document.querySelectorAll('button[aria-label="Close"], button[data-testid="close-button"], [data-testid="cookie-banner-close-button"]');
+        closeBtns.forEach(b => b.click());
+
+        // 3. Remove blocking backdrops
+        const overlays = document.querySelectorAll('div[data-testid="body-overlay"], .GenericModal__overlay');
+        overlays.forEach(o => o.remove());
+      });
+    } catch { /* silent */ }
+  }
+
   async navigateToPlaylist(url) {
     console.log(`[player] navigating to: ${url}`);
     try {
       await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await this.dismissOverlays();
       await this.sleep(rand(2000, 3500));
     } catch (err) {
       console.error('[player] navigation failed:', err.message);
@@ -51,6 +73,7 @@ class Player {
         await this.page.goto('https://open.spotify.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
         await this.sleep(2500);
         await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await this.dismissOverlays();
         await this.sleep(rand(2000, 3500));
       } catch (retryErr) {
         console.error('[player] retry navigation failed:', retryErr.message);
@@ -66,7 +89,6 @@ class Player {
     this.isYielding = false;
     this.userControlled = true;
 
-    // Convert Spotify URI to web URL if passed in URI format (spotify:track:xxx)
     let targetUrl = url.trim();
     if (targetUrl.startsWith('spotify:')) {
       const parts = targetUrl.split(':');
@@ -87,18 +109,26 @@ class Player {
     console.log(`[player] 🎯 User clicked track index: ${index}`);
     this.isYielding = false;
     this.userControlled = true;
+    await this.dismissOverlays();
 
     try {
-      const rows = await this.page.$$('[data-testid="tracklist-row"]');
-      if (rows && rows[index - 1]) {
-        const row = rows[index - 1];
-        // Double click the row to play it in Spotify Web Player
-        await row.scrollIntoViewIfNeeded();
-        await row.dblclick();
-        console.log(`[player] double-clicked track row #${index}`);
+      const success = await this.page.evaluate((idx) => {
+        const rows = document.querySelectorAll('[data-testid="tracklist-row"]');
+        if (rows && rows[idx - 1]) {
+          const row = rows[idx - 1];
+          // Dispatch double click to play
+          row.scrollIntoView({ block: 'center', behavior: 'instant' });
+          const event = new MouseEvent('dblclick', { bubbles: true, cancelable: true, view: window });
+          row.dispatchEvent(event);
+          return true;
+        }
+        return false;
+      }, index);
+
+      if (success) {
+        console.log(`[player] dispatched double-click on track row #${index}`);
         await this.sleep(1500);
         this.isPlaying = true;
-        return;
       }
     } catch (err) {
       console.error('[player] playTrackIndex error:', err.message);
@@ -109,11 +139,20 @@ class Player {
    * Explicitly starts playback from a playlist/album header button.
    */
   async startPlaylistPlayback() {
+    await this.dismissOverlays();
+
     try {
-      const playBtn = await this.page.$('[data-testid="play-button"], [data-testid="action-bar-row"] button[data-testid="play-button"]');
-      if (playBtn) {
-        await playBtn.click();
-        console.log('[player] clicked playlist/album play button');
+      const clicked = await this.page.evaluate(() => {
+        const playBtn = document.querySelector('[data-testid="play-button"], [data-testid="action-bar-row"] button[data-testid="play-button"]');
+        if (playBtn) {
+          playBtn.click();
+          return true;
+        }
+        return false;
+      });
+
+      if (clicked) {
+        console.log('[player] clicked playlist/album play button (direct DOM)');
         await this.sleep(1500);
         if (this.config.shuffle) {
           await this.enableShuffle();
@@ -122,7 +161,7 @@ class Player {
       }
       await this.resume();
     } catch (err) {
-      console.error('[player] startPlaylistPlayback failed:', err.message);
+      console.error('[player] startPlaylistPlayback error:', err.message);
       await this.resume();
     }
   }
@@ -133,31 +172,46 @@ class Player {
   async resume() {
     if (this.isYielding) return;
     console.log('[player] resuming current playback (preserving track)...');
+    await this.dismissOverlays();
 
     try {
-      // 1. If Connect Bar is active, transfer to this browser
-      const transferBtn = await this.page.$('[data-testid="connect-bar"] button, button[aria-label*="Listen on" i], button[aria-label*="Play here" i]');
-      if (transferBtn) {
-        await transferBtn.click();
-        await this.sleep(1000);
-      }
+      // 1. Direct DOM click on transfer / connect bar button
+      await this.page.evaluate(() => {
+        const transferBtn = document.querySelector('[data-testid="connect-bar"] button, button[aria-label*="Listen on" i], button[aria-label*="Play here" i]');
+        if (transferBtn) transferBtn.click();
+      });
 
-      // 2. Click the bottom bar play button (resumes exact current track)
-      const controlPlay = await this.page.$('[data-testid="control-button-playpause"]');
-      if (controlPlay) {
-        const label = await controlPlay.getAttribute('aria-label');
-        if (label && label.toLowerCase().includes('play')) {
-          await controlPlay.click();
-          console.log('[player] clicked bottom bar play (resumed track)');
-          this.isPlaying = true;
-          return;
-        } else if (label && label.toLowerCase().includes('pause')) {
-          this.isPlaying = true;
-          return;
+      // 2. Direct DOM click on the play/pause button (resumes exact track)
+      const res = await this.page.evaluate(() => {
+        const controlPlay = document.querySelector('[data-testid="control-button-playpause"]');
+        if (controlPlay) {
+          const label = (controlPlay.getAttribute('aria-label') || '').toLowerCase();
+          if (label.includes('play')) {
+            controlPlay.click();
+            return { action: 'clicked_play' };
+          } else if (label.includes('pause')) {
+            return { action: 'already_playing' };
+          }
         }
+        // Fallback: playlist entity play button
+        const entityPlay = document.querySelector('[data-testid="play-button"]');
+        if (entityPlay) {
+          entityPlay.click();
+          return { action: 'clicked_entity_play' };
+        }
+        return { action: 'none' };
+      });
+
+      if (res.action === 'clicked_play' || res.action === 'clicked_entity_play') {
+        console.log(`[player] resumed playback (${res.action})`);
+        this.isPlaying = true;
+        return;
+      } else if (res.action === 'already_playing') {
+        this.isPlaying = true;
+        return;
       }
 
-      // 3. Spacebar fallback to unpause without navigation
+      // 3. Spacebar unpause fallback
       await this.page.keyboard.press('Space');
       console.log('[player] sent spacebar to unpause');
       this.isPlaying = true;
@@ -168,18 +222,23 @@ class Player {
 
   async pause() {
     console.log('[player] pausing playback...');
+    await this.dismissOverlays();
     try {
-      const controlBtn = await this.page.$('[data-testid="control-button-playpause"]');
-      if (controlBtn) {
-        const label = await controlBtn.getAttribute('aria-label');
-        if (label && label.toLowerCase().includes('pause')) {
-          await controlBtn.click();
-          console.log('[player] paused via control button');
-          this.isPlaying = false;
-          return;
+      const paused = await this.page.evaluate(() => {
+        const controlBtn = document.querySelector('[data-testid="control-button-playpause"]');
+        if (controlBtn) {
+          const label = (controlBtn.getAttribute('aria-label') || '').toLowerCase();
+          if (label.includes('pause')) {
+            controlBtn.click();
+            return true;
+          }
         }
+        return false;
+      });
+
+      if (!paused) {
+        await this.page.keyboard.press('Space');
       }
-      await this.page.keyboard.press('Space');
       this.isPlaying = false;
     } catch (err) {
       console.error('[player] pause failed:', err.message);
@@ -188,12 +247,12 @@ class Player {
 
   async previousTrack() {
     console.log('[player] previous track...');
+    await this.dismissOverlays();
     try {
-      const prevBtn = await this.page.$('[data-testid="control-button-skip-back"]');
-      if (prevBtn) {
-        await prevBtn.click();
-        console.log('[player] clicked previous track button');
-      }
+      await this.page.evaluate(() => {
+        const prevBtn = document.querySelector('[data-testid="control-button-skip-back"]');
+        if (prevBtn) prevBtn.click();
+      });
     } catch (err) {
       console.error('[player] previousTrack failed:', err.message);
     }
@@ -201,6 +260,7 @@ class Player {
 
   async skipTrack() {
     if (this.isYielding) return;
+    await this.dismissOverlays();
 
     if (Date.now() - this.hourStart > 3600000) {
       this.skipsThisHour = 0;
@@ -213,9 +273,16 @@ class Player {
     }
 
     try {
-      const nextBtn = await this.page.$('[data-testid="control-button-skip-forward"]');
-      if (nextBtn) {
-        await nextBtn.click();
+      const skipped = await this.page.evaluate(() => {
+        const nextBtn = document.querySelector('[data-testid="control-button-skip-forward"]');
+        if (nextBtn) {
+          nextBtn.click();
+          return true;
+        }
+        return false;
+      });
+
+      if (skipped) {
         this.skipsThisHour++;
         console.log(`[player] skipped track (${this.skipsThisHour}/${this.config.maxSkipsPerHour} this hour)`);
       }
@@ -225,15 +292,17 @@ class Player {
   }
 
   async enableShuffle() {
+    await this.dismissOverlays();
     try {
-      const shuffleBtn = await this.page.$('[data-testid="control-button-shuffle"]');
-      if (shuffleBtn) {
-        const checked = await shuffleBtn.getAttribute('aria-checked');
-        if (checked !== 'true') {
-          await shuffleBtn.click();
-          console.log('[player] shuffle enabled');
+      await this.page.evaluate(() => {
+        const shuffleBtn = document.querySelector('[data-testid="control-button-shuffle"]');
+        if (shuffleBtn) {
+          const checked = shuffleBtn.getAttribute('aria-checked');
+          if (checked !== 'true') {
+            shuffleBtn.click();
+          }
         }
-      }
+      });
     } catch (err) {
       console.error('[player] enableShuffle failed:', err.message);
     }
@@ -473,14 +542,14 @@ class Player {
   async takeOver() {
     this.isYielding = false;
     console.log('[player] ⚡ Taking over playback on Dockerized Spotify Web Player...');
+    await this.dismissOverlays();
 
     try {
       // 1. Transfer to this browser if connect bar is active
-      const transferBtn = await this.page.$('[data-testid="connect-bar"] button, button[aria-label*="Listen on" i], button[aria-label*="Play here" i]');
-      if (transferBtn) {
-        await transferBtn.click();
-        await this.sleep(1000);
-      }
+      await this.page.evaluate(() => {
+        const transferBtn = document.querySelector('[data-testid="connect-bar"] button, button[aria-label*="Listen on" i], button[aria-label*="Play here" i]');
+        if (transferBtn) transferBtn.click();
+      });
 
       // 2. Resume currently loaded track / queue
       await this.resume();
