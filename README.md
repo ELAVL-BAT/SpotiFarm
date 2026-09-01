@@ -95,7 +95,7 @@ SpotiFarm actively monitors Spotify Connect state directly from the DOM:
 * **Auto-Takeover:** When you finish listening and pause your music, SpotiFarm waits a configurable grace period (e.g. 10 seconds) and automatically takes over playback on the Docker instance.
 * **Non-Destructive Playback:** If you manually change a track or album, SpotiFarm recognizes user intent and will not force-reset your queue back to the default farm playlist.
 
-### 2. Glassmorphic Web Dashboard (`:3000`)
+### 2. Web Dashboard (`:3000`)
 
 <div align="center">
   <img src="assets/dashboard.png" alt="SpotiFarm WebUI Dashboard" width="100%" />
