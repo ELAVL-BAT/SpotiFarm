@@ -47,7 +47,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dbus \
     procps \
     curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# ─── uBlock Origin Adblocker ──────────────────────────────────────
+RUN mkdir -p /opt/extensions && \
+    curl -sL https://github.com/gorhill/uBlock/releases/download/1.74.0/uBlock0_1.74.0.chromium.zip -o /tmp/ublock.zip && \
+    unzip -q /tmp/ublock.zip -d /opt/extensions/ && \
+    rm -f /tmp/ublock.zip
 
 # ─── PulseAudio config ─────────────────────────────────────────────
 RUN mkdir -p /root/.config/pulse && \

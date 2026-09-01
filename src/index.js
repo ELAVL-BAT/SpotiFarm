@@ -36,61 +36,62 @@ async function main() {
 
   cleanStaleLocks(PROFILE_DIR);
 
+  const UBLOCK_PATH = process.env.UBLOCK_PATH || '/opt/extensions/uBlock0.chromium';
+
+  const browserArgs = [
+    // ── sandbox ───────────────────────────────────────────
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+
+    // ── memory & stability ─────────────────────────────────
+    '--disable-crash-reporter',
+    '--noerrdialogs',
+    '--js-flags=--max-old-space-size=256',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-software-rasterizer',
+    '--disable-gpu-sandbox',
+
+    // ── background optimization ────────────────────────────
+    '--disable-background-networking',
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    '--disable-background-media-suspend',
+    '--disable-client-side-phishing-detection',
+    '--disable-default-apps',
+    '--disable-hang-monitor',
+    '--disable-popup-blocking',
+    '--disable-prompt-on-repost',
+    '--disable-sync',
+    '--disable-translate',
+    '--disable-web-resources',
+    '--metrics-recording-only',
+    '--no-first-run',
+    '--safebrowsing-disable-auto-update',
+    '--password-store=basic',
+
+    // ── anti-detection ────────────────────────────────────
+    '--disable-blink-features=AutomationControlled',
+
+    // ── audio: let it play into PulseAudio null sink ──────
+    '--autoplay-policy=no-user-gesture-required',
+  ];
+
+  // Load uBlock Origin extension if present
+  if (fs.existsSync(UBLOCK_PATH)) {
+    browserArgs.push(`--disable-extensions-except=${UBLOCK_PATH}`);
+    browserArgs.push(`--load-extension=${UBLOCK_PATH}`);
+    console.log(`[main] 🛡️ uBlock Origin extension enabled (${UBLOCK_PATH})`);
+  } else {
+    console.log('[main] ℹ️ uBlock Origin path not found, running with network ad-block filters');
+  }
+
   const context = await chromium.launchPersistentContext(PROFILE_DIR, {
     headless: false, // needs Xvfb — Spotify detects headless and throttles
     viewport: { width: 1280, height: 720 },
     userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    args: [
-      // ── sandbox ───────────────────────────────────────────
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-
-      // ── memory: merge all renderer into main process ───────
-      '--single-process',
-      '--no-zygote',
-
-      // ── memory: kill crash reporter ───────────────────────
-      '--disable-crash-reporter',
-      '--noerrdialogs',
-      // ── memory: cap V8 JS heap ────────────────────────────
-      '--js-flags=--max-old-space-size=128',
-
-      // ── memory: shared mem + GPU ──────────────────────────
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-software-rasterizer',
-      '--disable-gpu-sandbox',
-
-      // ── memory: kill background services ──────────────────
-      '--disable-background-networking',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-background-media-suspend',
-      '--disable-client-side-phishing-detection',
-      '--disable-default-apps',
-      '--disable-extensions',
-      '--disable-hang-monitor',
-      '--disable-popup-blocking',
-      '--disable-prompt-on-repost',
-      '--disable-sync',
-      '--disable-translate',
-      '--disable-web-resources',
-      '--metrics-recording-only',
-      '--no-first-run',
-      '--safebrowsing-disable-auto-update',
-      '--password-store=basic',
-
-      // ── memory: disable unneeded features ─────────────────
-      '--disable-features=Translate,OptimizationHints,CalculateNativeWinOcclusion,InterestFeedContentSuggestions,CertificateTransparencyComponentUpdater,AutofillServerCommunication,PrivacySandboxSettings4,AudioServiceOutOfProcess,IsolateOrigins,site-per-process',
-      '--enable-features=NetworkServiceInProcess',
-
-      // ── anti-detection ────────────────────────────────────
-      '--disable-blink-features=AutomationControlled',
-
-      // ── audio: let it play into PulseAudio null sink ──────
-      '--autoplay-policy=no-user-gesture-required',
-    ],
+    args: browserArgs,
     ignoreDefaultArgs: ['--enable-automation'],
     locale: 'en-US',
     timezoneId: 'America/New_York',
@@ -128,7 +129,7 @@ async function main() {
 
   const page = await context.newPage();
 
-  // block heavy media assets we don't need — save bandwidth, allow critical Spotify scripts/styles/api
+  // block heavy media assets we don't need — save bandwidth
   await page.route('**/*.{woff,woff2,mp4,webm}', (route) => route.abort());
   await page.route('**/*', (route) => {
     return route.continue();

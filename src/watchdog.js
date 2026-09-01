@@ -65,6 +65,16 @@ class Watchdog {
       const state = await this.player.getDeviceAndPlaybackState();
 
       // ────────────────────────────────────────────────────────────────
+      // SCENARIO 0: Audio Ad Break detected on Free account
+      // ────────────────────────────────────────────────────────────────
+      if (state.isAd && !state.isExternalDevice) {
+        console.log('[watchdog] 📢 Ad break detected on Free account — attempting to skip ad...');
+        try {
+          await this.player.skipTrack();
+        } catch {}
+      }
+
+      // ────────────────────────────────────────────────────────────────
       // SCENARIO 1: Other device is actively listening
       // ────────────────────────────────────────────────────────────────
       if (state.isExternalDevice && state.isPlaying) {

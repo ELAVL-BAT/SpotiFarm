@@ -112,23 +112,23 @@ class Player {
     await this.dismissOverlays();
 
     try {
-      const success = await this.page.evaluate((idx) => {
-        const rows = document.querySelectorAll('[data-testid="tracklist-row"]');
-        if (rows && rows[idx - 1]) {
-          const row = rows[idx - 1];
-          // Dispatch double click to play
-          row.scrollIntoView({ block: 'center', behavior: 'instant' });
-          const event = new MouseEvent('dblclick', { bubbles: true, cancelable: true, view: window });
-          row.dispatchEvent(event);
-          return true;
-        }
-        return false;
-      }, index);
+      const rows = await this.page.$$('[data-testid="tracklist-row"]');
+      if (rows && rows[index - 1]) {
+        const row = rows[index - 1];
+        await row.scrollIntoViewIfNeeded();
+        await row.hover();
+        await this.sleep(200);
 
-      if (success) {
-        console.log(`[player] dispatched double-click on track row #${index}`);
+        const playBtn = await row.$('button[data-testid="play-button"], button[aria-label*="Play" i], button');
+        if (playBtn) {
+          await playBtn.click({ force: true });
+        } else {
+          await row.dblclick({ force: true });
+        }
+        console.log(`[player] started track row #${index}`);
         await this.sleep(1500);
         this.isPlaying = true;
+        return;
       }
     } catch (err) {
       console.error('[player] playTrackIndex error:', err.message);
@@ -142,23 +142,34 @@ class Player {
     await this.dismissOverlays();
 
     try {
-      const clicked = await this.page.evaluate(() => {
-        const playBtn = document.querySelector('[data-testid="play-button"], [data-testid="action-bar-row"] button[data-testid="play-button"]');
-        if (playBtn) {
-          playBtn.click();
-          return true;
-        }
-        return false;
-      });
-
-      if (clicked) {
-        console.log('[player] clicked playlist/album play button (direct DOM)');
+      // 1. Click playlist play button
+      const playBtn = await this.page.$('[data-testid="action-bar-row"] button[data-testid="play-button"], [data-testid="play-button"], button[data-testid="play-button"]');
+      if (playBtn) {
+        await playBtn.click({ force: true });
+        console.log('[player] clicked playlist play button');
         await this.sleep(1500);
         if (this.config.shuffle) {
           await this.enableShuffle();
         }
         return;
       }
+
+      // 2. Click first track in tracklist
+      const firstRow = await this.page.$('[data-testid="tracklist-row"]');
+      if (firstRow) {
+        await firstRow.hover();
+        await this.sleep(200);
+        const rowPlay = await firstRow.$('button[data-testid="play-button"], button[aria-label*="Play" i], button');
+        if (rowPlay) {
+          await rowPlay.click({ force: true });
+        } else {
+          await firstRow.dblclick({ force: true });
+        }
+        console.log('[player] started playback from first track row');
+        await this.sleep(1500);
+        return;
+      }
+
       await this.resume();
     } catch (err) {
       console.error('[player] startPlaylistPlayback error:', err.message);
@@ -472,8 +483,14 @@ class Player {
                                document.querySelector('h1');
         const playlistTitle = playlistHeader ? playlistHeader.textContent.trim() : null;
 
+        const isAd = document.querySelector('[data-testid="ad-break"]') !== null ||
+                     document.querySelector('[data-testid="context-item-info-ad-title"]') !== null ||
+                     /advertisement|spotify ad/i.test(trackName || '') ||
+                     /advertisement|spotify ad/i.test(artistName || '');
+
         return {
           isPlaying,
+          isAd,
           isExternalDevice,
           externalDeviceName,
           trackName,
@@ -489,6 +506,7 @@ class Player {
       console.error('[player] getDeviceAndPlaybackState error:', err.message);
       return {
         isPlaying: false,
+        isAd: false,
         isExternalDevice: false,
         externalDeviceName: null,
         trackName: null,
