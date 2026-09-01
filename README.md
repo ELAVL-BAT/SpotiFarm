@@ -108,13 +108,22 @@ A real-time management dashboard featuring:
 * **Interactive Playlist Tracklist:** View up to 30 visible tracks from the currently loaded playlist; click any track in the WebUI to jump directly to it.
 * **Full Transport Controls:** Play, Pause, Previous Track, Next Track, and Force Takeover buttons.
 
-### 3. Humanized Farming Algorithms
+### 3. Isolated Virtual Desktop & VNC Authentication (`:6080`)
+
+<div align="center">
+  <img src="assets/vncdocker_preview.png" alt="SpotiFarm noVNC Remote Session" width="100%" />
+</div>
+
+* Built-in browser-based VNC viewer (`http://localhost:6080/vnc.html`) allows seamless 1-minute interactive login.
+* Runs on top of a lightweight Xvfb virtual framebuffer and PulseAudio null sink.
+
+### 4. Humanized Farming Algorithms
 To avoid looking like a static bot:
 * **Randomized Skips:** Configurable ceiling of humanized track skips per hour (default: 8 skips/hr) with randomized intervals.
 * **Playlist Rotation:** Automatically rotates between an array of target playlists on a custom schedule (e.g. every 60 minutes).
 * **Auto-Shuffle:** Keeps Spotify's shuffle mode enabled across rotations.
 
-### 4. Zero-Maintenance Reboot Resilience
+### 5. Zero-Maintenance Reboot Resilience
 * Powered by Docker volume persistence (`chrome-profile:/data/chrome-profile`).
 * Login once upon installation. Even if your physical server loses power, crashes, or reboots, Docker starts the container back up and SpotiFarm resumes streaming within 15 seconds without prompting for login again.
 
