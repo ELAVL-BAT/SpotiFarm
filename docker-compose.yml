@@ -1,0 +1,40 @@
+services:
+  spotifarm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spotifarm
+    restart: unless-stopped
+    ports:
+      # SpotiFarms WebUI Dashboard — open http://localhost:3000
+      - "3000:3000"
+      # noVNC — open http://localhost:6080/vnc.html for interactive VNC
+      - "6080:6080"
+      - "5900:5900"
+    volumes:
+      # persistent Chrome profile — login once via VNC, survives restarts forever
+      - chrome-profile:/data/chrome-profile
+      - ./config:/config:ro
+    environment:
+      - DISPLAY=:99
+      - PULSE_SERVER=unix:/tmp/pulse-socket
+      - NODE_ENV=production
+      - CONFIG_PATH=/config/config.json
+      - PROFILE_DIR=/data/chrome-profile
+      - WEBUI_PORT=3000
+      # set ENABLE_VNC=1 to enable VNC for debugging, 0 saves ~80MB RAM
+      - ENABLE_VNC=${ENABLE_VNC:-1}
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "pgrep", "-x", "supervisord"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  chrome-profile:
+    driver: local

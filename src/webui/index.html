@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpotiFarms Dashboard</title>
+  <meta name="description" content="24/7 Headless Spotify Connect & Stream Farm Dashboard">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Background Glow Orbs -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <div class="app-container">
+    <!-- ── Top Header ────────────────────────────────────────────── -->
+    <header class="top-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.5 17.3c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.2-.8-.5-.1-.4.2-.7.5-.8 4-1 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.5-3.3c-.3.4-.8.5-1.2.3-2.9-1.8-7.3-2.3-10.7-1.3-.4.1-.9-.1-1-.6-.1-.4.1-.9.6-1 3.9-1.2 8.8-.6 12 1.4.4.2.5.8.3 1.2zm.1-3.5c-3.5-2.1-9.2-2.3-12.5-1.3-.5.2-1.1-.1-1.3-.6-.2-.5.1-1.1.6-1.3 3.9-1.2 10.2-1 14.1 1.4.5.3.6.9.3 1.4-.2.5-.8.7-1.2.4z"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>SpotiFarms <span class="badge badge-pulse">24/7 LIVE</span></h1>
+          <p class="subtitle">Autonomous Spotify Connect Node & Web Player</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="stat-pill" id="uptimePill">
+          <span class="dot online"></span>
+          <span class="label">Uptime:</span>
+          <span class="val" id="uptimeVal">00:00:00</span>
+        </div>
+        <a href="http://localhost:6080/vnc.html" target="_blank" class="btn btn-glass btn-sm" id="vncBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          Open VNC Viewer
+        </a>
+      </div>
+    </header>
+
+    <!-- ── Direct URL / Song / Album Player Bar ───────────────────── -->
+    <div class="glass-card quick-play-bar">
+      <div class="quick-play-inner">
+        <div class="quick-play-label">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--spotify-green)" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Play Any URL:</span>
+        </div>
+        <input type="text" id="customPlayUrlInput" placeholder="Paste any Spotify Track, Album, Playlist, or Artist URL..." />
+        <button class="btn btn-primary btn-sm" id="btnPlayCustomUrl">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          Play URL
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Main Grid ─────────────────────────────────────────────── -->
+    <main class="dashboard-grid">
+
+      <!-- COLUMN 1: Live Status & Playback -->
+      <section class="grid-col main-status-col">
+
+        <!-- Card: Account Info -->
+        <div class="glass-card account-card">
+          <div class="card-header">
+            <span class="section-tag">ACCOUNT & SESSION</span>
+            <div class="status-indicator" id="connectStatusBadge">
+              <span class="dot active"></span>
+              <span class="status-text">Connected</span>
+            </div>
+          </div>
+          <div class="account-profile">
+            <div class="avatar-wrapper">
+              <img id="userAvatar" src="" alt="Avatar" class="avatar-img hidden">
+              <div id="avatarFallback" class="avatar-fallback">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+              </div>
+            </div>
+            <div class="account-details">
+              <h2 class="username" id="userName">Detecting account...</h2>
+              <div class="account-meta">
+                <span class="tag tag-spotify" id="userTier">Spotify Web Player</span>
+                <span class="device-tag" id="activeDeviceTag">Docker Chromium</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Now Playing -->
+        <div class="glass-card now-playing-card">
+          <div class="card-header">
+            <span class="section-tag">NOW PLAYING</span>
+            <div class="eq-visualizer" id="eqVisualizer">
+              <span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <div class="track-showcase">
+            <div class="album-art-box">
+              <img id="trackCoverArt" src="" alt="Cover Art" class="cover-img hidden">
+              <div id="coverFallback" class="cover-fallback">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="48" height="48">
+                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="track-info">
+              <h2 class="track-title" id="trackTitle">No Track Playing</h2>
+              <p class="track-artist" id="trackArtist">Waiting for playback...</p>
+              <div class="playlist-current-badge" id="currentPlaylistBadge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18V5l12-2v13"></path>
+                  <circle cx="6" cy="18" r="3"></circle>
+                  <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+                <span id="currentPlaylistName">Top Hits</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-section">
+            <div class="progress-track">
+              <div class="progress-fill" id="progressBar" style="width: 0%;"></div>
+            </div>
+            <div class="progress-timestamps">
+              <span id="timeElapsed">0:00</span>
+              <span id="timeRemaining">-0:00</span>
+            </div>
+          </div>
+
+          <!-- Player Controls -->
+          <div class="playback-controls">
+            <button class="btn btn-control" id="btnPrev" title="Previous Track">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+              </svg>
+            </button>
+            <button class="btn btn-control" id="btnPause" title="Pause">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+              </svg>
+            </button>
+            <button class="btn btn-control btn-primary" id="btnPlay" title="Play">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </button>
+            <button class="btn btn-control" id="btnSkip" title="Skip Track">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+              </svg>
+            </button>
+            <button class="btn btn-glass btn-sm" id="btnTakeover" title="Force Takeover to Docker">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              Take Over
+            </button>
+          </div>
+        </div>
+
+        <!-- Card: Visible Playlist Tracks (Clickable to Play) -->
+        <div class="glass-card tracklist-card">
+          <div class="card-header">
+            <span class="section-tag">PLAYLIST TRACKS (CLICK TO PLAY)</span>
+            <span class="queue-count" id="trackCount">0 tracks</span>
+          </div>
+          <div class="tracklist-container" id="tracklistContainer">
+            <div class="empty-state">No tracks loaded from page yet.</div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- COLUMN 2: Configuration & Automation -->
+      <section class="grid-col config-col">
+        <div class="glass-card config-card">
+          <div class="card-header">
+            <span class="section-tag">FARM SETTINGS & AUTOMATION</span>
+            <button class="btn btn-accent btn-sm" id="btnSaveConfig">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              Save Settings
+            </button>
+          </div>
+
+          <form id="configForm" class="config-form">
+
+            <!-- Toggle: Auto Play -->
+            <div class="form-group toggle-group">
+              <div class="toggle-info">
+                <label for="cfgAutoPlay">24/7 Autonomous Playback</label>
+                <p class="help-text">Automatically initiates and keeps playback active continuously.</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="cfgAutoPlay" name="autoPlay">
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <!-- Toggle: Smart Auto-Takeover -->
+            <div class="form-group toggle-group">
+              <div class="toggle-info">
+                <label for="cfgAutoTakeover">Smart Connect Auto-Takeover</label>
+                <p class="help-text">Yields when you listen on another device, then takes over when you stop.</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="cfgAutoTakeover" name="autoTakeover" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <!-- Toggle: Shuffle -->
+            <div class="form-group toggle-group">
+              <div class="toggle-info">
+                <label for="cfgShuffle">Auto-Shuffle Mode</label>
+                <p class="help-text">Keeps shuffle enabled to simulate organic listening patterns.</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="cfgShuffle" name="shuffle" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- Input: Takeover Delay -->
+            <div class="form-group">
+              <label for="cfgTakeoverDelay">Takeover Grace Period (seconds)</label>
+              <p class="help-text">Seconds to wait after external device stops before reclaiming audio.</p>
+              <div class="input-with-unit">
+                <input type="number" id="cfgTakeoverDelay" name="takeoverDelaySec" min="3" max="120" value="10">
+                <span class="unit">sec</span>
+              </div>
+            </div>
+
+            <!-- Input: Playlist Rotation -->
+            <div class="form-group">
+              <label for="cfgRotateMinutes">Playlist Rotation Timer (minutes)</label>
+              <p class="help-text">Interval between switching to the next configured playlist.</p>
+              <div class="input-with-unit">
+                <input type="number" id="cfgRotateMinutes" name="playlistRotateMinutes" min="10" max="720" value="60">
+                <span class="unit">min</span>
+              </div>
+            </div>
+
+            <!-- Input: Max Skips Per Hour -->
+            <div class="form-group">
+              <label for="cfgMaxSkips">Max Humanized Skips per Hour</label>
+              <p class="help-text">Random skip ceiling to avoid tripping Spotify anti-bot thresholds.</p>
+              <div class="input-with-unit">
+                <input type="number" id="cfgMaxSkips" name="maxSkipsPerHour" min="0" max="30" value="8">
+                <span class="unit">skips/hr</span>
+              </div>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- Playlists Manager -->
+            <div class="form-group">
+              <div class="playlist-header-row">
+                <label>Configured Farm Playlists / Albums</label>
+                <button type="button" class="btn btn-glass btn-xs" id="btnAddPlaylist">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add URL
+                </button>
+              </div>
+              <div class="playlists-list" id="playlistsList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

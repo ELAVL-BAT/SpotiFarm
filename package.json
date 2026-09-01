@@ -1,0 +1,14 @@
+{
+  "name": "spotifarms",
+  "version": "1.0.0",
+  "private": true,
+  "description": "24/7 Spotify Connect Docker container",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "install-browser": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "playlists": [
+    "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
+    "https://open.spotify.com/playlist/37i9dQZF1DX0XUsuxWHRQd"
+  ],
+  "shuffle": true,
+  "watchdogIntervalMs": 15000,
+  "takeoverDelayMs": 10000,
+  "playlistRotateMinutes": 60,
+  "maxSkipsPerHour": 8,
+  "vnc": true
+}
